@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "client_base": "http://31.177.111.169:8086/files",
+  "updater_archive": {
+    "name": "NNG-Mac-v1.0.0.zip",
+    "url": "http://31.177.111.169:8086/mac/NNG-Mac-v1.0.0.zip",
+    "size": 11278923,
+    "sha256": "263e8b40d0e44edc8a9ea12e97967de1d6d23d75deac50e6c1d834740efb0425"
+  },
+  "updater": {
+    "name": "nng-updater-arm64",
+    "size": 6353474,
+    "sha256": "7d97cfb0a31620749abe7049f35edfeb6e77057862f690907ac97167baaf54f1",
+    "source_entry": "NNG Mac.app/Contents/MacOS/nng-updater-arm64"
+  },
+  "modules_archive": {
+    "name": "l2Craft-launcher-mac.zip",
+    "url": "https://patch.l2craft.eu/dl/l2Craft-launcher-mac.zip",
+    "size": 497719130,
+    "sha256": "0edac7677465ba94a4fdaddf517326eaa65bcc50b51dc60783b84da992cdb12d"
+  },
+  "modules": [
+    {
+      "name": "psetup.dll",
+      "size": 38400,
+      "sha256": "4d2ed3674752bc9dc7194638c0a25baf55e843423755a870693addd68289b6b7",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/psetup.dll"
+    },
+    {
+      "name": "unichat.dll",
+      "size": 45568,
+      "sha256": "07e1486d6c212826be3a53fec21d03a4542e488aa4dfd8250864d593c098a0cf",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/unichat.dll"
+    },
+    {
+      "name": "DSETUP.dll",
+      "size": 5120,
+      "sha256": "805cabec81c2caa79efd630cc17b53a8de6a9fb3ed66e973933aaf8e4a1d405d",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/DSETUP.dll"
+    },
+    {
+      "name": "Core.dll",
+      "size": 957912,
+      "sha256": "9dd9b0019da6cdcc897f6e8af786a47ab79ad5a620c2b0ce8abe969c2cea2539",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/Core.dll"
+    },
+    {
+      "name": "NSplash.dll",
+      "size": 86036,
+      "sha256": "082b3f6c18ecbb03e71ee377ce36ef4f7e319892e1a9c94a764c8a534de07990",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/NSplash.dll"
+    },
+    {
+      "name": "NWindow.dll",
+      "size": 8347648,
+      "sha256": "a15f78c56d9b6c9afb0da1d1bb467b1b8ed17747de3fa024d0d24e95fa7546dd",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/NWindow.dll"
+    },
+    {
+      "name": "Window.dll",
+      "size": 508948,
+      "sha256": "f295e4ae656dfd8cb4368c3d466c7f8d051cb0a1fb7619f1e275bb181bd6a2dd",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/Window.dll"
+    },
+    {
+      "name": "ALAudio.dll",
+      "size": 150548,
+      "sha256": "83a7dde1839ed8ec00b9b87e0a1772073a5f483c5ae09e92367905d7bed724c7",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/ALAudio.dll"
+    },
+    {
+      "name": "D3DDrv.dll",
+      "size": 1426452,
+      "sha256": "dc306e60d2ec100e613f307437e68df452248f79f26385eeaa5955e2e2a788ea",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/D3DDrv.dll"
+    },
+    {
+      "name": "LineageCreature.dll",
+      "size": 116756,
+      "sha256": "73ea18fee20a26ef9f5820c1c3ec2a9a0154684ec549f9439d6faa8832b07ab4",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/LineageCreature.dll"
+    },
+    {
+      "name": "IpDrv.dll",
+      "size": 303124,
+      "sha256": "367c1458d6655d73cad7912693b307bd8cd0b2de11fba765164b70066b23fb5a",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/IpDrv.dll"
+    },
+    {
+      "name": "beecrypt.dll",
+      "size": 188436,
+      "sha256": "4d66674cdda755992e0b236636485a8ecee7224243734aac416039c265359729",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/beecrypt.dll"
+    },
+    {
+      "name": "l2.exe",
+      "size": 434688,
+      "sha256": "865be153d55933c3ddb817c029ce5b48ce5aa6e01da896a5d30f07290c2f3e7b",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/l2.exe"
+    },
+    {
+      "name": "WinDrv.dll",
+      "size": 214548,
+      "sha256": "32970980a37ad7e676bd2f74a89ca55fe77ee9fe7417d82eadd5cdac0a390f47",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/WinDrv.dll"
+    },
+    {
+      "name": "Engine.dll",
+      "size": 8146944,
+      "sha256": "e1813aefae9cb1218178661eeef18f00e52146d39af35f964c895217eec63639",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/Engine.dll"
+    },
+    {
+      "name": "Fire.dll",
+      "size": 167936,
+      "sha256": "5ec9f3f4f29f800b889f775c5e779b63e5765077ae66d35d398446293b86f66e",
+      "source_entry": "l2Craft.app/Contents/Resources/engine/l2Craft.app/Contents/Resources/mac_bin/Fire.dll"
+    }
+  ]
+}

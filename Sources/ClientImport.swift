@@ -112,7 +112,7 @@ func applyGamePolicy(root:URL) throws {
     let process=Process();process.executableURL=paths.wine;process.arguments=["regedit","/S",reg.path]
     process.environment=acceleratedEnvironment(root:root,source:ProcessInfo.processInfo.environment)
     process.standardInput=FileHandle.nullDevice
-    try process.run();process.waitUntilExit()
+    try runSetupProcess(process,timeout:30,label:"настройка Wine")
     guard process.terminationStatus==0 else {throw publicError("Не удалось применить настройки Wine.")}
     let system=root.appendingPathComponent("compat/mac-client/system")
     try fm.createDirectory(at:system,withIntermediateDirectories:true)

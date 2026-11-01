@@ -16,12 +16,12 @@ for p in files:
  for name,pattern in patterns:
   if re.search(pattern,p.read_bytes()):errors.append(str(p.relative_to(ROOT))+': '+name)
  if p.stat().st_size>5*1024*1024:errors.append(str(p.relative_to(ROOT))+': unexpected large file')
-app=ROOT/'build/NNG Mac Community.app'
-for p in app.rglob('*') if app.exists() else []:
+apps=[ROOT/'build/NNG Mac Community.app',ROOT/'build/NNG Mac Easy.app']
+for p in [file for app in apps if app.exists() for file in app.rglob('*')]:
  if not p.is_file():continue
  if p.name.lower() in {'l2.exe','engine.dll','core.dll','nwindow.dll','user.ini','l2.ini','option.ini','system.reg','user.reg'}:errors.append('app contains game or user state: '+p.name)
  if p.name.startswith('wine-cx-') and p.name.endswith('.tar.xz'):errors.append('Wine archive must be fetched upstream, not bundled')
- if re.search(rb'/Users/(?!runner/)[A-Za-z0-9_.-]+/',p.read_bytes()):errors.append('app personal path: '+str(p.relative_to(app)))
+ if re.search(rb'/Users/(?!runner/)[A-Za-z0-9_.-]+/',p.read_bytes()):errors.append('app personal path: '+str(p.relative_to(ROOT/'build')))
 # Verify staged Git content too, if there is a repository yet.
 r=subprocess.run(['git','-C',str(ROOT),'rev-parse','--show-toplevel'],capture_output=True,text=True)
 if r.returncode==0 and Path(r.stdout.strip())==ROOT:
@@ -30,4 +30,4 @@ if r.returncode==0 and Path(r.stdout.strip())==ROOT:
   if Path(path).parts[0] not in DIRECTORIES and path not in FILES:errors.append('unexpected tracked path: '+path)
 if errors:
  print(json.dumps({'pass':False,'issues':errors},indent=2));raise SystemExit(1)
-print(json.dumps({'pass':True,'public_files':len(files),'app_checked':app.exists(),'checks':['credentials','personal paths','private IPv4','game binaries','prefix/account data','public allowlist']},indent=2))
+print(json.dumps({'pass':True,'public_files':len(files),'apps_checked':[p.name for p in apps if p.exists()],'checks':['credentials','personal paths','private IPv4','game binaries','prefix/account data','public allowlist']},indent=2))

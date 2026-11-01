@@ -4,7 +4,7 @@ import Darwin
 
 func applicationRoot() -> URL {
     if let path = ProcessInfo.processInfo.environment["NNG_STATE_ROOT"], path.hasPrefix("/") { return URL(fileURLWithPath:path) }
-    return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/NNG Mac Community")
+    return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(isEasyInstaller() ? "Library/Application Support/NNG Mac Easy" : "Library/Application Support/NNG Mac Community")
 }
 
 struct RuntimePin: Decodable {
@@ -44,7 +44,8 @@ func verifyGameInstallation(root: URL, progress: ((Int,Int)->Void)? = nil) throw
             // The game writes s_info.ini's dates/counters on exit.
             if !overlayNames.contains(leaf), !["option.ini","user.ini","s_info.ini"].contains(leaf) {
                 let actual = try digest(game.appendingPathComponent(name))
-                if actual != pin.sha {
+                let tuned=try tunedSettingMatches(name:leaf,base:pin.sha,actual:actual)
+                if actual != pin.sha && !tuned {
                     throw NSError(domain:"NNG",code:8,userInfo:[NSLocalizedDescriptionKey:"Требуется обновить файлы запуска: \(name)"])
                 }
             }
@@ -129,7 +130,7 @@ func prepareAcceleratedRuntime(root:URL) throws {
         let boot = Process(); boot.executableURL=paths.wine
         boot.arguments=["wineboot","--init"]; boot.environment=acceleratedEnvironment(root:root,source:ProcessInfo.processInfo.environment)
         boot.standardInput=FileHandle.nullDevice
-        try boot.run();boot.waitUntilExit()
+        try runSetupProcess(boot,timeout:120,label:"создание Wine prefix")
         guard boot.terminationStatus == 0 else { throw NSError(domain:"NNGRuntime",code:6,userInfo:[NSLocalizedDescriptionKey:"Не удалось создать изолированный Wine prefix."]) }
     }
     let link=paths.prefix.appendingPathComponent("drive_c/NNG")
@@ -155,6 +156,7 @@ func activeGameSession(root:URL) -> GameSession? {
 }
 
 func runGameWorker(root: URL = applicationRoot(), prepareWithUpdater: Bool = false) -> Int32 {
+    setbuf(stdout,nil)
     // Both launch routes stay in this native worker even if the GUI exits.
     // The bootstrap owns .launch.lock during preparation; it never launches.
     let coordination = Darwin.open(root.appendingPathComponent(".native-launch.lock").path, O_CREAT | O_RDWR, 0o600)
@@ -171,6 +173,10 @@ func runGameWorker(root: URL = applicationRoot(), prepareWithUpdater: Bool = fal
     let prefix = accelerated ? fast.prefix : root.appendingPathComponent("compat/prefix-cx23-macbin")
     let game = root.appendingPathComponent("compat/mac-client")
     do {
+        if isEasyInstaller() {try ensureRosetta(acceptLicense:CommandLine.arguments.contains("--accept-rosetta-license"))}
+        if prepareWithUpdater {try prepareManagedInstallation(root:root,acceptRosetta:CommandLine.arguments.contains("--accept-rosetta-license"))}
+        if CommandLine.arguments.contains("--setup-only") {return 0}
+        guard try verifyGameInstallation(root:root) else {throw publicError("Клиент не подготовлен.")}
         if accelerated { try prepareAcceleratedRuntime(root:root) }
         let pins = accelerated ? Dictionary(uniqueKeysWithValues:try acceleratedManifest().files.filter { $0.key.hasPrefix("wine/bin/") }.map { (URL(fileURLWithPath:$0.key).lastPathComponent,$0.value) }) : try JSONDecoder().decode([String:String].self, from: Data(contentsOf: Bundle.main.resourceURL!.appendingPathComponent("runtime-executables.json")))
         for name in ["wine", "wineserver"] {
@@ -210,6 +216,7 @@ func runGameWorker(root: URL = applicationRoot(), prepareWithUpdater: Bool = fal
                 usleep(50000)
             }
             helper.executableURL = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/NNG Trackpad.app/Contents/MacOS/nng-trackpad")
+            helper.environment = ProcessInfo.processInfo.environment.merging(["NNG_STATE_ROOT":root.path],uniquingKeysWith:{$1})
             helper.arguments = ["--game-pid",String(p.processIdentifier)]
             helper.standardInput = FileHandle.nullDevice; helper.standardOutput = FileHandle.nullDevice; helper.standardError = FileHandle.nullDevice
             try? helper.run()
@@ -272,7 +279,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         item.submenu = appMenu; NSApp.mainMenu = menu
 
         window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 640, height: 420), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
-        window.title = "NNG Mac Community"
+        window.title = isEasyInstaller() ? "NNG Mac" : "NNG Mac Community"
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.center()
@@ -301,7 +308,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let logs = NSButton(title: "Журнал", target: self, action: #selector(openLogs))
         let info = NSButton(title: "О программе", target: self, action: #selector(about))
         logs.bezelStyle = .inline; info.bezelStyle = .inline
-        let footer = NSTextField(labelWithString: "Community preview · свой клиент игры")
+        let footer = NSTextField(labelWithString: isEasyInstaller() ? "Клиент скачает апдейтер · Apple Silicon" : "Community preview · свой клиент игры")
         footer.font = .systemFont(ofSize: 11); footer.textColor = .tertiaryLabelColor
         for view in [title, subtitle, status, detail, progress, button, updateButton, logs, info, footer] {
             view.translatesAutoresizingMaskIntoConstraints = false; content.addSubview(view)
@@ -317,6 +324,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
             footer.leadingAnchor.constraint(equalTo: title.leadingAnchor), footer.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -28),
             logs.trailingAnchor.constraint(equalTo: info.leadingAnchor, constant: -22), logs.centerYAnchor.constraint(equalTo: footer.centerYAnchor), info.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -38), info.centerYAnchor.constraint(equalTo: footer.centerYAnchor)
         ])
+        if isEasyInstaller() {updateButton.title="Проверить обновления"}
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in self?.refresh() }
         window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
@@ -352,18 +360,20 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
             if activeGameSession(root:root) == nil, trackpadStartedForPID != pid { startTrackpad(pid: pid, show: false) }
             status.stringValue = "Игра открыта"
             detail.stringValue = "Эта кнопка также возвращает свёрнутое окно игры."
+            if isEasyInstaller(),let data=try? Data(contentsOf:root.appendingPathComponent("compat/trackpad-status.json")),let value=try? JSONSerialization.jsonObject(with:data) as? [String:Any],value["trusted"] as? Bool == false {detail.stringValue="Для жестов: меню приложения → Управление тачпадом… → Разрешить управление в macOS."}
             button.title = "Показать игру"; button.isEnabled = true
             progress.stopAnimation(nil)
         } else if busy {
-            status.stringValue = logTail.contains("==> launch") ? "Запускаем игру…" : "Проверяем файлы…"
-            detail.stringValue = "Первая подготовка может занять несколько минут."
+            status.stringValue = logTail.contains("==> launch") ? "Запускаем игру…" : (isEasyInstaller() && logTail.contains("NNG_STAGE:") ? "Подготавливаем игру…" : "Проверяем файлы…")
+            detail.stringValue = logTail.components(separatedBy:.newlines).last(where:{$0.hasPrefix("NNG_STAGE: ")}).map {String($0.dropFirst(11))} ?? "Первая подготовка может занять несколько минут."
             button.title = "Подождите…"; button.isEnabled = false
             progress.startAnimation(nil)
         } else if !failed {
             trackpadStartedForPID = nil
-            status.stringValue = "Готов к запуску"
-            detail.stringValue = "Клиент обновляется отдельно средствами вашего сервера."
-            button.title = "Играть"; button.isEnabled = true
+            let installed=FileManager.default.fileExists(atPath:root.appendingPathComponent(isEasyInstaller() ? "compat/easy-ready.json" : "compat/imported-files.json").path)
+            status.stringValue = isEasyInstaller() && !installed ? "Установим всё автоматически" : "Готов к запуску"
+            detail.stringValue = isEasyInstaller() ? (installed ? "Wine, Metal и управление тачпадом настроены." : "Апдейтер скачает тот же клиент. Нужно 20 ГБ и интернет.") : "Клиент обновляется отдельно средствами вашего сервера."
+            button.title = isEasyInstaller() && !installed ? "Установить и играть" : "Играть"; button.isEnabled = true
             progress.stopAnimation(nil)
         }
     }
@@ -389,6 +399,11 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if worker?.isRunning == true || otherLaunchActive() {
             showGame(); return
         }
+        if isEasyInstaller() {
+            let installed=FileManager.default.fileExists(atPath:root.appendingPathComponent("compat/easy-ready.json").path)
+            guard approveRosettaIfNeeded() else {return}
+            preparing=true;failed=false;startWorker(local:installed);return
+        }
         if !FileManager.default.fileExists(atPath:root.appendingPathComponent("compat/imported-files.json").path) { update(); return }
         preparing = true; failed = false
         status.stringValue = "Подготавливаем запуск…"
@@ -407,6 +422,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     @objc private func update() {
         guard !preparing, worker?.isRunning != true, !otherLaunchActive() else { return }
+        if isEasyInstaller() {guard approveRosettaIfNeeded() else {return};preparing=true;failed=false;startWorker(local:false);return}
         let panel=NSOpenPanel();panel.canChooseFiles=false;panel.canChooseDirectories=true;panel.allowsMultipleSelection=false
         panel.message="Выберите папку совместимого клиента с system/l2.exe. Исходные файлы не изменяются."
         guard panel.runModal() == .OK, let selected=panel.url else {return}
@@ -440,7 +456,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
             reader = try FileHandle(forReadingFrom: url); logTail = ""
             let p = Process()
             p.executableURL = Bundle.main.executableURL!
-            p.arguments = ["--game-worker"]
+            p.arguments = [isEasyInstaller() && !local ? "--update-and-game-worker" : "--game-worker"] + (acceptedRosettaLicense ? ["--accept-rosetta-license"] : [])
             p.standardOutput = output; p.standardError = output
             p.standardInput = FileHandle.nullDevice
             p.terminationHandler = { [weak self] process in
@@ -455,6 +471,17 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
             worker = p
             try p.run(); preparing = false; refresh()
         } catch { showError(error.localizedDescription) }
+    }
+
+    private var acceptedRosettaLicense=false
+    private func approveRosettaIfNeeded() -> Bool {
+        guard !rosettaAvailable() else {return true}
+        let alert=NSAlert();alert.messageText="Для игры нужна Rosetta 2"
+        alert.informativeText="Rosetta от Apple позволяет запускать код для Intel. Нажимая «Принять и установить», вы принимаете условия лицензии Apple для Rosetta. Установка выполняется штатной программой macOS."
+        alert.addButton(withTitle:"Принять и установить");alert.addButton(withTitle:"Отмена");alert.addButton(withTitle:"Условия Apple")
+        let result=alert.runModal()
+        if result == .alertThirdButtonReturn {NSWorkspace.shared.open(URL(string:"https://www.apple.com/legal/sla/")!);return false}
+        acceptedRosettaLicense=result == .alertFirstButtonReturn;return acceptedRosettaLicense
     }
 
     private func showError(_ message: String) {
@@ -478,6 +505,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
             if !show || trackpadProcess?.isRunning == true { return }
         }
         let p = Process(); p.executableURL = helper
+        p.environment = ProcessInfo.processInfo.environment.merging(["NNG_STATE_ROOT":root.path],uniquingKeysWith:{$1})
         p.arguments = ["--game-pid", String(pid)] + (show ? ["--show"] : [])
         p.standardInput = FileHandle.nullDevice; p.standardOutput = FileHandle.nullDevice; p.standardError = FileHandle.nullDevice
         do { try p.run(); trackpadProcess = p; trackpadStartedForPID = pid }
@@ -507,6 +535,10 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 }
 
+if CommandLine.arguments.contains("--setup-only") {
+    try? FileManager.default.createDirectory(at:applicationRoot().appendingPathComponent("compat"),withIntermediateDirectories:true)
+    exit(runGameWorker(prepareWithUpdater:true))
+}
 if CommandLine.arguments.contains("--prepare-runtime") {
     do {try prepareAcceleratedRuntime(root:applicationRoot());print("Runtime prepared and pinned; no game launched");exit(0)}
     catch {fputs("Runtime preparation failed: \(error)\n",stderr);exit(1)}

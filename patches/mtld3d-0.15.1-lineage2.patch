@@ -1,0 +1,68 @@
+--- a/windows/d3d9/src/cursor.rs
++++ b/windows/d3d9/src/cursor.rs
+@@ -1740,54 +1740,6 @@
+             );
+             post_message(hwnd, WM_APP_REACTIVATE_FULLSCREEN, 0, 0);
+         }
+-    } else if msg == WM_SIZE {
+-        // Implicit client-area resize from Wine's macdrv (e.g. macOS
+-        // shrunk the visible rect after we attached the layer because
+-        // chrome / dock take some pixels). lParam's low / high words
+-        // are the new client width / height in pixels — trigger an
+-        // auto-resize so a windowed back buffer keeps matching the
+-        // client area the game sees.
+-        //
+-        // Skipped while mtld3d is the one moving this window: a fullscreen
+-        // transition's own `SetWindowPos` bounces back here, and that
+-        // path already resolved the back-buffer size. The latch is keyed
+-        // by the window because the bounce is delivered to whichever
+-        // device is subclassed on it, which need not be the device doing
+-        // the move, while a move of another device's window says nothing
+-        // about this one. A fullscreen device never follows the
+-        // window: its logical size is the requested mode, and an external
+-        // shrink is answered by re-covering the monitor — deferred through
+-        // a posted message, because native leaves the app-set rect in
+-        // place until window events are processed (test_window_position).
+-        let lp_bits = lp.cast_unsigned();
+-        let new_width = u32::try_from(lp_bits & 0xFFFF).expect("16-bit value fits u32");
+-        let new_height = u32::try_from((lp_bits >> 16) & 0xFFFF).expect("16-bit value fits u32");
+-        // SAFETY: see WM_SETCURSOR branch — `dev_ptr` is live for
+-        // the lifetime of the subclass.
+-        let dev = unsafe { &mut *dev_ptr };
+-        if new_width != 0 && new_height != 0 && !crate::fullscreen::driving_window(hwnd) {
+-            if dev.fullscreen_window().is_some() {
+-                post_message(hwnd, WM_APP_REASSERT_FULLSCREEN, 0, lp);
+-            } else {
+-                dev.apply_auto_resize(new_width, new_height);
+-            }
+-        }
+-        // SAFETY: see WM_SETCURSOR branch — `dev_ptr` is live for the
+-        // lifetime of the subclass.
+-        let cur = unsafe { (*dev_ptr).cursor_mut() };
+-        let suppress = cur.enter_resize(wp);
+-        if suppress {
+-            DEVICE_INSTANCES
+-                .lock()
+-                .expect("device-instances mutex poisoned")
+-                .hold_until_dispatch_ends(hwnd as usize, device);
+-        }
+-        debug!(
+-            target: LOG_TARGET,
+-            "wndproc WM_SIZE: type={wp} {new_width}x{new_height} → game hides suppressed until \
+-             this dispatch returns={suppress} visible={} handle={:p} tid={}",
+-            cur.visible(), cur.handle, current_thread_id(),
+-        );
+     } else if msg == WM_APP_REASSERT_FULLSCREEN {
+         // Deferred half of the WM_SIZE branch above. Our own message, so it
+         // is consumed here rather than forwarded to the game. lParam is the
+--- a/windows/d3d9/src/device.rs
++++ b/windows/d3d9/src/device.rs
+@@ -2143,7 +2143,7 @@
+         }
+         // Both `IDirect3DDevice9::Present` and the swap chain's land here, so
+         // the diagnostics that run once per frame poll from this point.
+-        crate::capture::poll();
++        // Do not pump window events while Present borrows DeviceInner.
+         // Games can present exclusively through IDirect3DSwapChain9. Cursor
+         // scale, native visibility and diagnostics must follow that path too.
+         let cursor_scale = self.config().cursor_scale;

@@ -1,0 +1,19 @@
+{
+  "wine": {
+    "name": "wine-cx-26.3.0-9-macos-x86_64.tar.xz",
+    "size": 235425012,
+    "sha256": "af3682051414eeffa5be48584a671790fd3852e980ff5acd38facff6f4bff1e9",
+    "url": "https://github.com/athei/mach9/releases/download/cx-26.3.0-9/wine-cx-26.3.0-9-macos-x86_64.tar.xz"
+  },
+  "mtld3d": {
+    "url": "https://github.com/athei/mtld3d/releases/download/v0.15.1/mtld3d.tar.xz",
+    "sha256": "115d9089323b20010738d2b4835e79e6652d41690c4b360141e8b0433faff972",
+    "version": "0.15.1"
+  },
+  "x87sidecar": {
+    "repository": "https://github.com/athei/x87sidecar",
+    "commit": "499e0f7e60d2961d379df459dd96bc79ecfe59fd",
+    "archive_url": "https://github.com/athei/x87sidecar/archive/499e0f7e60d2961d379df459dd96bc79ecfe59fd.tar.gz",
+    "sha256": "135752af0670c8575644efd4cc74b0ab0beee1ef964137c6aca1653061efe4a4"
+  }
+}

@@ -1,0 +1,9 @@
+.DS_Store
+/build/
+/dist/
+/local/
+__pycache__/
+*.pyc
+# Deferred local cleanup: files still referenced by running processes.
+/NNG Mac-before-*.app/
+/fps-20261101/

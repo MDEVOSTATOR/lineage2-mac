@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "archive": {
+    "name": "wine-cx-26.3.0-9-macos-x86_64.tar.xz",
+    "size": 235425012,
+    "sha256": "af3682051414eeffa5be48584a671790fd3852e980ff5acd38facff6f4bff1e9",
+    "url": "https://github.com/athei/mach9/releases/download/cx-26.3.0-9/wine-cx-26.3.0-9-macos-x86_64.tar.xz"
+  },
+  "files": {
+    "wine/bin/wine": "7202d5f87ba9542f915b8a886ef7707fd0213200972e4cf61504c514b5e301c4",
+    "wine/bin/wineserver": "c686a25a3dc893941ba8aaa0eb85075877be227bc00cda827d3ff8b2b94f8e97",
+    "wine/lib/wine/x86_64-unix/wine": "344f95e27553263de37640eba6e138f4ec8f4c821c631b9e1d228dccca12f611",
+    "wine/lib/wine/x86_64-unix/compatdb.so": "5c5b0dd3c12994a53492467146d91143e0c5a7f70229afafa1d8cba5b7720347",
+    "x87sidecar": "ac1631efc10501cd8c99c245a3e43b131fc27e22e6d49941d9db08b46623f895",
+    "wine/lib/wine/d3d9/mtld3d/i386-windows/d3d9.dll": "3b83f4a464f0a33d61e7158803202b7f2ed213b78e71f89065da1a0acbb060ab",
+    "wine/lib/wine/d3d9/mtld3d/i386-windows/mtld3d.dll": "418ca64b528b4e6b85c02f0f119bc1f5750798892078a45f3718858b83ee55fe",
+    "wine/lib/wine/d3d9/mtld3d/x86_64-windows/d3d9.dll": "8a8d1f4f9fcf5fbae155ff1ce5341b3a2bdf14c7f427cae808e033a70324d7bb",
+    "wine/lib/wine/d3d9/mtld3d/x86_64-windows/mtld3d.dll": "cb4d7c6e94ce348e12ad6c3c8e33818db1fd6409b42fd35b6cae991b04d7f31e",
+    "wine/lib/wine/d3d9/mtld3d/x86_64-unix/mtld3d.so": "bdae75cab026177b44daaa6c88492bfb2e3e1287903351d4e87dcb6142c79c3b"
+  },
+  "compatibility_patch": {
+    "name": "NNG resize compatibility",
+    "base": "mtld3d0.15.1",
+    "revision": 1,
+    "changed_bytes": 9,
+    "source_recipe": "Sources/patch_resize_renderer.py",
+    "renderer_capture_hotkey": false
+  }
+}

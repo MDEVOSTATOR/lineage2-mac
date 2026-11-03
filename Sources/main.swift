@@ -7,6 +7,8 @@ func applicationRoot() -> URL {
     return FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(isEasyInstaller() ? "Library/Application Support/NNG Mac Easy" : "Library/Application Support/NNG Mac Community")
 }
 
+func launcherRoot() -> URL {applicationRoot()}
+
 struct RuntimePin: Decodable {
     let name: String
     let sha256: String
@@ -19,6 +21,7 @@ func selectedRenderer(root:URL) -> String { "mtld3d" }
 func rendererEnvironment(root:URL,game:URL,environment:[String:String]) throws -> [String:String] { environment }
 
 func verifyGameInstallation(root: URL, progress: ((Int,Int)->Void)? = nil) throws -> Bool {
+    defer {flushFileDigestCache(root:root)}
     let fm = FileManager.default
     let client = root.appendingPathComponent("client")
     let game = root.appendingPathComponent("compat/mac-client")
@@ -101,6 +104,7 @@ func acceleratedEnvironment(root:URL, source:[String:String]) -> [String:String]
     return env
 }
 func prepareAcceleratedRuntime(root:URL) throws {
+    defer {flushFileDigestCache(root:root)}
     let fm = FileManager.default, pin = try acceleratedManifest(), paths = acceleratedPaths(root:root)
     let resources = Bundle.main.resourceURL!.appendingPathComponent("acceleration")
     try fm.createDirectory(at:paths.base,withIntermediateDirectories:true)
@@ -175,7 +179,13 @@ func runGameWorker(root: URL = applicationRoot(), prepareWithUpdater: Bool = fal
     do {
         if isEasyInstaller() {try ensureRosetta(acceptLicense:CommandLine.arguments.contains("--accept-rosetta-license"))}
         if prepareWithUpdater {try prepareManagedInstallation(root:root,acceptRosetta:CommandLine.arguments.contains("--accept-rosetta-license"))}
-        if CommandLine.arguments.contains("--setup-only") {return 0}
+        if CommandLine.arguments.contains("--check-updates") {
+    do {
+        let changed=try clientNeedsUpdate(root:launcherRoot(),base:URL(string:"http://31.177.111.169:8086/files")!)
+        print(changed ? "UPDATES_AVAILABLE" : "UP_TO_DATE");exit(0)
+    } catch {fputs("Update check failed: \(error)\n",stderr);exit(1)}
+}
+if CommandLine.arguments.contains("--setup-only") {return 0}
         guard try verifyGameInstallation(root:root) else {throw publicError("Клиент не подготовлен.")}
         if accelerated { try prepareAcceleratedRuntime(root:root) }
         let pins = accelerated ? Dictionary(uniqueKeysWithValues:try acceleratedManifest().files.filter { $0.key.hasPrefix("wine/bin/") }.map { (URL(fileURLWithPath:$0.key).lastPathComponent,$0.value) }) : try JSONDecoder().decode([String:String].self, from: Data(contentsOf: Bundle.main.resourceURL!.appendingPathComponent("runtime-executables.json")))
@@ -234,13 +244,7 @@ func runGameWorker(root: URL = applicationRoot(), prepareWithUpdater: Bool = fal
     } catch { print("Local launch error: \(error)"); return 1 }
 }
 
-func digest(_ url: URL) throws -> String {
-    let file = try FileHandle(forReadingFrom: url)
-    defer { try? file.close() }
-    var hash = SHA256()
-    while let chunk = try file.read(upToCount: 4 * 1024 * 1024), !chunk.isEmpty { hash.update(data: chunk) }
-    return hash.finalize().map { String(format: "%02x", $0) }.joined()
-}
+func digest(_ url: URL) throws -> String {try cachedFileDigest(url,root:launcherRoot())}
 
 final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let root = applicationRoot()
@@ -400,13 +404,23 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
             showGame(); return
         }
         if isEasyInstaller() {
-            let installed=FileManager.default.fileExists(atPath:root.appendingPathComponent("compat/easy-ready.json").path)
             guard approveRosettaIfNeeded() else {return}
-            preparing=true;failed=false;startWorker(local:installed);return
+            preparing=true;failed=false;status.stringValue="Проверяем обновления…"
+            button.isEnabled=false;updateButton.isEnabled=false;progress.startAnimation(nil)
+            DispatchQueue.global(qos:.userInitiated).async {
+                do {
+                    guard let configuration=try easyConfiguration(),let base=URL(string:configuration.client_base) else {throw publicError("Нет адреса обновлений.")}
+                    let needsUpdate=try clientNeedsUpdate(root:self.root,base:base)
+                    let local = needsUpdate ? false : try self.verifyInstalledGame()
+                    DispatchQueue.main.async {self.startWorker(local:local)}
+                } catch let error as UpdateProbeFailure {DispatchQueue.main.async {self.updateCheckFailed(error)}}
+                  catch {DispatchQueue.main.async {self.showError(error.localizedDescription)}}
+            }
+            return
         }
         if !FileManager.default.fileExists(atPath:root.appendingPathComponent("compat/imported-files.json").path) { update(); return }
         preparing = true; failed = false
-        status.stringValue = "Подготавливаем запуск…"
+        status.stringValue = "Проверяем обновления…"
         detail.stringValue = "Проверяем встроенные компоненты приложения."
         button.isEnabled = false; updateButton.isEnabled = false; progress.startAnimation(nil)
         DispatchQueue.global(qos: .userInitiated).async {
@@ -443,6 +457,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     private func prepareRuntimeCache() throws {
+        defer {flushFileDigestCache(root:root)}
         try prepareAcceleratedRuntime(root:root)
     }
 
@@ -482,6 +497,23 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let result=alert.runModal()
         if result == .alertThirdButtonReturn {NSWorkspace.shared.open(URL(string:"https://www.apple.com/legal/sla/")!);return false}
         acceptedRosettaLicense=result == .alertFirstButtonReturn;return acceptedRosettaLicense
+    }
+
+    private func updateCheckFailed(_ error:Error) {
+        preparing=false;progress.stopAnimation(nil)
+        let alert=NSAlert();alert.messageText="Не удалось проверить обновления"
+        alert.informativeText=error.localizedDescription+"\nМожно повторить проверку или запустить проверенную локальную версию."
+        alert.addButton(withTitle:"Повторить");alert.addButton(withTitle:"Запустить локально");alert.addButton(withTitle:"Отмена")
+        let result=alert.runModal()
+        if result == .alertFirstButtonReturn {play();return}
+        if result != .alertSecondButtonReturn {refresh();return}
+        preparing=true
+        DispatchQueue.global(qos:.userInitiated).async {
+            do {
+                guard try self.verifyInstalledGame() else {throw NSError(domain:"NNG",code:20,userInfo:[NSLocalizedDescriptionKey:"Полного локального клиента нет. Нужна загрузка обновлений."])}
+                DispatchQueue.main.async {self.startWorker(local:true)}
+            } catch {DispatchQueue.main.async {self.showError(error.localizedDescription)}}
+        }
     }
 
     private func showError(_ message: String) {

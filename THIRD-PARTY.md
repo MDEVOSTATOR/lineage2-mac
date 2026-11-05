@@ -34,3 +34,14 @@ release and are not covered by our MIT license. Their SHA-256 and source archive
 entries are recorded in `resources/easy-install.json`. Configuration-only binary
 deltas are in `resources/settings-patches.json`; no account or owner prefix is
 copied. Obtaining these components remains subject to their owners' terms.
+
+## MSXML4 migration
+
+Easy 1.4.2 configures the Microsoft MSXML4 files already supplied in the
+server-downloaded client. No Microsoft DLL is included in our Git repository
+or ZIP. All three file hashes are pinned in `resources/xml-runtime.json`.
+These files retain Microsoft's terms, not our MIT license. The bundled
+`msxml_probe.exe` is our own windows/386 diagnostic, built from
+`Sources/MSXMLProbe.go`; the native migration is `Sources/XMLRuntime.swift`.
+Registry checkpoints and user logs remain private inside the user's Wine
+prefix and must never be included in a public release.

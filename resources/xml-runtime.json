@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "files": {
+    "msxml4.dll": "8f49c37b4e04a13d15481d9cbca1b82fe1a5a13766df394f5866fad0b6cd5ef6",
+    "msxml4a.dll": "51e38d41a2bc89e65896a48e348ad35d4b12348a665197cadc95fc87fa4a9564",
+    "msxml4r.dll": "b9d07b33cae92176bd0f31a5aaf8bea5b6362fdc59e6a43b82f8b43db9f6cca9"
+  }
+}

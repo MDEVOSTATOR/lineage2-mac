@@ -280,7 +280,10 @@ func runGameWorker(root: URL = launcherRoot(), prepareWithUpdater: Bool = false)
     let prefix = accelerated ? fast.prefix : root.appendingPathComponent("compat/prefix-cx23-macbin")
     let game = root.appendingPathComponent("compat/mac-client")
     do {
-        if accelerated { try prepareAcceleratedRuntime(root:root) }
+        if accelerated {
+            try prepareAcceleratedRuntime(root:root)
+            try ensureNativeXMLRuntime(root:root,wine:fast.wine,prefix:fast.prefix,environment:acceleratedEnvironment(root:root,source:ProcessInfo.processInfo.environment),resources:Bundle.main.resourceURL!)
+        }
         let pins = accelerated ? Dictionary(uniqueKeysWithValues:try acceleratedManifest().files.filter { $0.key.hasPrefix("wine/bin/") }.map { (URL(fileURLWithPath:$0.key).lastPathComponent,$0.value) }) : try JSONDecoder().decode([String:String].self, from: Data(contentsOf: Bundle.main.resourceURL!.appendingPathComponent("runtime-executables.json")))
         for name in ["wine", "wineserver"] {
             guard try digest(runtime.appendingPathComponent(name)) == pins[name] else { print("Wine executable checksum mismatch"); return 1 }
@@ -473,7 +476,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         } else if !failed {
             trackpadStartedForPID = nil
             status.stringValue = "Готов к запуску"
-            detail.stringValue = "Играть можно без сервера загрузки. Обновления проверяются отдельно."
+            detail.stringValue = "Перед запуском автоматически проверим обновления."
             button.title = "Играть"; button.isEnabled = true
             progress.stopAnimation(nil)
         }
@@ -671,6 +674,17 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 }
 
+if CommandLine.arguments.contains("--repair-xml") {
+    let root=launcherRoot()
+    let native=Darwin.open(root.appendingPathComponent(".native-launch.lock").path,O_CREAT|O_RDWR,0o600)
+    let launch=Darwin.open(root.appendingPathComponent(".launch.lock").path,O_CREAT|O_RDWR,0o600)
+    guard native>=0,launch>=0,flock(native,LOCK_EX|LOCK_NB)==0,flock(launch,LOCK_EX|LOCK_NB)==0 else {fputs("Закройте игру перед ремонтом XML.\n",stderr);exit(1)}
+    do {
+        let paths=acceleratedPaths(root:root)
+        try ensureNativeXMLRuntime(root:root,wine:paths.wine,prefix:paths.prefix,environment:acceleratedEnvironment(root:root,source:ProcessInfo.processInfo.environment),resources:Bundle.main.resourceURL!)
+        flushFileDigestCache(root:root);exit(0)
+    } catch {fputs("XML repair failed: \(error)\n",stderr);exit(1)}
+}
 if CommandLine.arguments.contains("--check-updates") {
     do {
         let changed=try clientNeedsUpdate(root:launcherRoot(),base:URL(string:"http://31.177.111.169:8086/files")!)

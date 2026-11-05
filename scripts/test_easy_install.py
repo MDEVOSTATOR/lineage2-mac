@@ -21,6 +21,9 @@ result={}
 run('initial-verify',[exe,'--verify-client']);result['all_client_hashes']=True
 client=state/'client';game=state/'compat/mac-client/system';user=game/'User.ini';original=user.read_bytes()
 stock_user_sha=sha(client/'system/User.ini')
+# Existing Wine-ready markers must not skip the new XML migration.
+xml_marker=state/'compat/prefix-cx26-x87/.nng-msxml4-v1.json'
+xml_marker.unlink(missing_ok=True)
 try:
  # A sentinel in the disposable game's own INI must survive an updater rerun.
  user.write_bytes(original+b'\n; isolated integration test sentinel\n')
@@ -28,6 +31,8 @@ try:
  run('repeat-setup',[exe,'--setup-only'])
  assert sha(user)==want and sha(client/'system/User.ini')==stock_user_sha
  assert (state/'compat/easy-ready.json').exists()
+ assert xml_marker.exists() and 'XML runtime:' in (logs/'repeat-setup.log').read_text()
+ result['xml_migration_on_existing_prefix']=True
  result['repeat_setup_preserves_user_settings']=True
 finally:user.write_bytes(original)
 # Corrupt just a tiny, known stock file in the disposable cache. Same updater

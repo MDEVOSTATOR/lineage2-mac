@@ -19,7 +19,7 @@ for p in files:
 apps=[ROOT/'build/NNG Mac Community.app',ROOT/'build/NNG Mac Easy.app']
 for p in [file for app in apps if app.exists() for file in app.rglob('*')]:
  if not p.is_file():continue
- if p.name.lower() in {'l2.exe','engine.dll','core.dll','nwindow.dll','user.ini','l2.ini','option.ini','system.reg','user.reg'}:errors.append('app contains game or user state: '+p.name)
+ if p.name.lower() in {'l2.exe','engine.dll','core.dll','nwindow.dll','user.ini','l2.ini','option.ini','system.reg','user.reg','userdef.reg','msxml4.dll','msxml4a.dll','msxml4r.dll'}:errors.append('app contains game or user state: '+p.name)
  if p.name.startswith('wine-cx-') and p.name.endswith('.tar.xz'):errors.append('Wine archive must be fetched upstream, not bundled')
  if re.search(rb'/Users/(?!runner/)[A-Za-z0-9_.-]+/',p.read_bytes()):errors.append('app personal path: '+str(p.relative_to(ROOT/'build')))
 # Verify staged Git content too, if there is a repository yet.

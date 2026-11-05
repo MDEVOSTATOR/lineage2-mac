@@ -179,15 +179,12 @@ func runGameWorker(root: URL = applicationRoot(), prepareWithUpdater: Bool = fal
     do {
         if isEasyInstaller() {try ensureRosetta(acceptLicense:CommandLine.arguments.contains("--accept-rosetta-license"))}
         if prepareWithUpdater {try prepareManagedInstallation(root:root,acceptRosetta:CommandLine.arguments.contains("--accept-rosetta-license"))}
-        if CommandLine.arguments.contains("--check-updates") {
-    do {
-        let changed=try clientNeedsUpdate(root:launcherRoot(),base:URL(string:"http://31.177.111.169:8086/files")!)
-        print(changed ? "UPDATES_AVAILABLE" : "UP_TO_DATE");exit(0)
-    } catch {fputs("Update check failed: \(error)\n",stderr);exit(1)}
-}
-if CommandLine.arguments.contains("--setup-only") {return 0}
+        if CommandLine.arguments.contains("--setup-only") {return 0}
         guard try verifyGameInstallation(root:root) else {throw publicError("Клиент не подготовлен.")}
-        if accelerated { try prepareAcceleratedRuntime(root:root) }
+        if accelerated {
+            try prepareAcceleratedRuntime(root:root)
+            try ensureNativeXMLRuntime(root:root,wine:fast.wine,prefix:fast.prefix,environment:acceleratedEnvironment(root:root,source:ProcessInfo.processInfo.environment),resources:Bundle.main.resourceURL!)
+        }
         let pins = accelerated ? Dictionary(uniqueKeysWithValues:try acceleratedManifest().files.filter { $0.key.hasPrefix("wine/bin/") }.map { (URL(fileURLWithPath:$0.key).lastPathComponent,$0.value) }) : try JSONDecoder().decode([String:String].self, from: Data(contentsOf: Bundle.main.resourceURL!.appendingPathComponent("runtime-executables.json")))
         for name in ["wine", "wineserver"] {
             guard try digest(runtime.appendingPathComponent(name)) == pins[name] else { print("Wine executable checksum mismatch"); return 1 }
@@ -567,6 +564,23 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 }
 
+if CommandLine.arguments.contains("--repair-xml") {
+    let root=launcherRoot()
+    let native=Darwin.open(root.appendingPathComponent(".native-launch.lock").path,O_CREAT|O_RDWR,0o600)
+    let launch=Darwin.open(root.appendingPathComponent(".launch.lock").path,O_CREAT|O_RDWR,0o600)
+    guard native>=0,launch>=0,flock(native,LOCK_EX|LOCK_NB)==0,flock(launch,LOCK_EX|LOCK_NB)==0 else {fputs("Закройте игру перед ремонтом XML.\n",stderr);exit(1)}
+    do {
+        let paths=acceleratedPaths(root:root)
+        try ensureNativeXMLRuntime(root:root,wine:paths.wine,prefix:paths.prefix,environment:acceleratedEnvironment(root:root,source:ProcessInfo.processInfo.environment),resources:Bundle.main.resourceURL!)
+        flushFileDigestCache(root:root);exit(0)
+    } catch {fputs("XML repair failed: \(error)\n",stderr);exit(1)}
+}
+if CommandLine.arguments.contains("--check-updates") {
+    do {
+        let changed=try clientNeedsUpdate(root:launcherRoot(),base:URL(string:"http://31.177.111.169:8086/files")!)
+        print(changed ? "UPDATES_AVAILABLE" : "UP_TO_DATE");exit(0)
+    } catch {fputs("Update check failed: \(error)\n",stderr);exit(1)}
+}
 if CommandLine.arguments.contains("--setup-only") {
     try? FileManager.default.createDirectory(at:applicationRoot().appendingPathComponent("compat"),withIntermediateDirectories:true)
     exit(runGameWorker(prepareWithUpdater:true))

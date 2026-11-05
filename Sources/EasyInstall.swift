@@ -183,6 +183,9 @@ func prepareManagedInstallation(root:URL,acceptRosetta:Bool) throws {
     try stageManagedClient(root:root,configuration:config)
     setupStage("Готовим Wine, Metal и ускорение x87…")
     try prepareAcceleratedRuntime(root:root);try installLocalFonts(root:root)
+    setupStage("Подготавливаем игровые диалоги…")
+    let paths=acceleratedPaths(root:root)
+    try ensureNativeXMLRuntime(root:root,wine:paths.wine,prefix:paths.prefix,environment:acceleratedEnvironment(root:root,source:ProcessInfo.processInfo.environment),resources:Bundle.main.resourceURL!)
     setupStage("Проверяем готовую установку…")
     guard try verifyGameInstallation(root:root) else {throw publicError("Итоговая проверка клиента не пройдена.")}
     try Data("{\"version\":1}\n".utf8).write(to:root.appendingPathComponent("compat/easy-ready.json"),options:.atomic)

@@ -7,7 +7,6 @@ func configureLauncherWindow(
     play: NSButton, update: NSButton, logs: NSButton, info: NSButton, footerText: String
 ) {
     let gold = NSColor(srgbRed: 0.91, green: 0.75, blue: 0.47, alpha: 1)
-    let burgundy = NSColor(srgbRed: 0.43, green: 0.14, blue: 0.19, alpha: 1)
     let content = NSView()
     content.wantsLayer = true
     content.layer?.backgroundColor = NSColor(srgbRed: 0.066, green: 0.064, blue: 0.075, alpha: 1).cgColor
@@ -61,8 +60,7 @@ func configureLauncherWindow(
         button.controlSize = .large
         button.font = .systemFont(ofSize: 15, weight: .semibold)
     }
-    play.bezelColor = burgundy
-    play.contentTintColor = gold
+    play.bezelColor = gold
     play.keyEquivalent = "\r"
     update.contentTintColor = .labelColor
     logs.bezelStyle = .inline

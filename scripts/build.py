@@ -7,7 +7,7 @@ from launcher_artwork import embedded_artwork_source
 ROOT=Path(__file__).resolve().parent.parent
 BUILD=ROOT/'build';CACHE=ROOT/'local/cache';DIST=ROOT/'dist'
 VERSION='1.3.4';TAG='v1.3.4-preview.1'
-EASY_VERSION='1.4.4';EASY_TAG='v1.4.4-preview.1'
+EASY_VERSION='1.4.5';EASY_TAG='v1.4.5-preview.1'
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def run(args,**kw):return subprocess.run([str(x) for x in args],check=True,**kw)
 def fetch(url,path,want):

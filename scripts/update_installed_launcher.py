@@ -8,7 +8,7 @@ from pathlib import Path
 import argparse,hashlib,json,os,plistlib,shutil,subprocess,datetime
 from launcher_artwork import embedded_artwork_source
 
-VERSION = "1.3.8"
+VERSION = "1.3.9"
 ROOT=Path(__file__).resolve().parent.parent
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--app',type=Path,default=Path('/Applications/NNG Mac.app'));p.add_argument('--xml-probe-exe',type=Path);p.add_argument('--apply',action='store_true');args=p.parse_args()
 app=args.app.resolve();candidate=ROOT/'build/NNG Mac Updated.app';source=ROOT/'build/legacy-sources/main.swift'

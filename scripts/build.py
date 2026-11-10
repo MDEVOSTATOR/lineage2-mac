@@ -2,10 +2,12 @@
 """Build the community app without any game files, Wine binary, or user state."""
 from pathlib import Path
 import argparse,hashlib,json,os,plistlib,shutil,subprocess,sys,urllib.request,zipfile
+from launcher_artwork import embedded_artwork_source
+
 ROOT=Path(__file__).resolve().parent.parent
 BUILD=ROOT/'build';CACHE=ROOT/'local/cache';DIST=ROOT/'dist'
 VERSION='1.3.4';TAG='v1.3.4-preview.1'
-EASY_VERSION='1.4.3';EASY_TAG='v1.4.3-preview.1'
+EASY_VERSION='1.4.4';EASY_TAG='v1.4.4-preview.1'
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def run(args,**kw):return subprocess.run([str(x) for x in args],check=True,**kw)
 def fetch(url,path,want):
@@ -72,7 +74,7 @@ def main():
  shutil.copy2(ROOT/'resources/AppIcon.icns',res/'NNGMac.icns')
  for p in (ROOT/'licenses').iterdir():shutil.copy2(p,res/'Licenses'/p.name)
  for name in ('THIRD-PARTY.md','LICENSE','README.md'):shutil.copy2(ROOT/name,res/name)
- for name in ('main.swift','ClientImport.swift','EasyInstall.swift','UpdateCheck.swift','LauncherUpdate.swift','XMLRuntime.swift','MSXMLProbe.go','Trackpad.swift','WineInputBridge.go'):
+ for name in ('main.swift','ClientImport.swift','EasyInstall.swift','UpdateCheck.swift','LauncherUpdate.swift','LauncherAppearance.swift','XMLRuntime.swift','MSXMLProbe.go','Trackpad.swift','WineInputBridge.go'):
   d=res/'Sources';d.mkdir(exist_ok=True);shutil.copy2(ROOT/'Sources'/name,d/name)
  for name in ('patch_resize_renderer.py','mtld3d-0.15.1-lineage2.patch'):shutil.copy2(ROOT/'patches'/name,res/'Sources'/name)
  main=app/'Contents/MacOS/nng';native=helper/'Contents/MacOS/nng-trackpad'
@@ -81,7 +83,7 @@ def main():
   source=(ROOT/'Sources'/name).read_text()
   if args.easy:source=source.replace('ru.nng.macclient.community','ru.nng.macclient.easy').replace('ru.nng.community.trackpad.show','ru.nng.easy.trackpad.show').replace('Library/Application Support/NNG Mac Community','Library/Application Support/NNG Mac Easy')
   (source_dir/name).write_text(source)
- run(['xcrun','swiftc','-O','-target','arm64-apple-macos15.0','-file-prefix-map',str(ROOT)+'=.','-debug-prefix-map',str(ROOT)+'=.',source_dir/'main.swift',ROOT/'Sources/ClientImport.swift',ROOT/'Sources/EasyInstall.swift',ROOT/'Sources/UpdateCheck.swift',ROOT/'Sources/LauncherUpdate.swift',ROOT/'Sources/XMLRuntime.swift','-o',main])
+ run(['xcrun','swiftc','-O','-target','arm64-apple-macos15.0','-file-prefix-map',str(ROOT)+'=.','-debug-prefix-map',str(ROOT)+'=.',source_dir/'main.swift',ROOT/'Sources/ClientImport.swift',ROOT/'Sources/EasyInstall.swift',ROOT/'Sources/UpdateCheck.swift',ROOT/'Sources/LauncherUpdate.swift',ROOT/'Sources/LauncherAppearance.swift',embedded_artwork_source(source_dir),ROOT/'Sources/XMLRuntime.swift','-o',main])
  run(['xcrun','swiftc','-O','-target','arm64-apple-macos15.0','-file-prefix-map',str(ROOT)+'=.','-debug-prefix-map',str(ROOT)+'=.',source_dir/'Trackpad.swift','-o',native])
  run([native,'--self-test'])
  shutil.copy2(bridge,hres/'nng-input.exe');(hres/'sha256').write_text(sha(bridge)+'\n')

@@ -45,3 +45,12 @@ These files retain Microsoft's terms, not our MIT license. The bundled
 `Sources/MSXMLProbe.go`; the native migration is `Sources/XMLRuntime.swift`.
 Registry checkpoints and user logs remain private inside the user's Wine
 prefix and must never be included in a public release.
+
+
+## Иллюстрация окна лаунчера
+
+`resources/launcher-artwork.jpg` — оригинальная иллюстрация NNG Updater V2.
+Создана для проекта инструментом imagegen и перенесена из Windows-ветки
+NNG без перекодирования. Исходный коммит `758ea9d`, файл
+`tools/client/assets/updater-background-v2.jpg`, SHA-256
+`fb499354e2983a97385fc965ef16cfa66e2bf42bca54d4cd3e9a1c71bc16f6ed`.

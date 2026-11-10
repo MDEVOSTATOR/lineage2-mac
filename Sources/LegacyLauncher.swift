@@ -382,52 +382,18 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         appMenu.addItem(withTitle: "Завершить NNG Mac", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         item.submenu = appMenu; NSApp.mainMenu = menu
 
-        window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 640, height: 420), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
+        window = NSWindow(contentRect: NSRect(origin: .zero, size: launcherWindowSize), styleMask: [.titled, .closable, .miniaturizable], backing: .buffered, defer: false)
         window.title = "NNG Mac"
         window.isReleasedWhenClosed = false
         window.delegate = self
-        window.center()
-        let content = NSView(); content.wantsLayer = true
-        content.layer?.backgroundColor = NSColor(calibratedRed: 0.075, green: 0.08, blue: 0.095, alpha: 1).cgColor
-        window.contentView = content
-
-        let title = NSTextField(labelWithString: "NNG")
-        title.font = .systemFont(ofSize: 52, weight: .bold)
-        title.textColor = NSColor(calibratedRed: 0.88, green: 0.72, blue: 0.43, alpha: 1)
-        let subtitle = NSTextField(labelWithString: "Lineage II для Mac")
-        subtitle.font = .systemFont(ofSize: 17, weight: .medium)
-        subtitle.textColor = .secondaryLabelColor
-        status.font = .systemFont(ofSize: 19, weight: .semibold)
-        detail.font = .systemFont(ofSize: 13)
-        detail.textColor = .secondaryLabelColor
-        detail.maximumNumberOfLines = 3
-        progress.style = .spinning; progress.controlSize = .small
-        progress.isIndeterminate = true; progress.isDisplayedWhenStopped = false
-        button.bezelStyle = .rounded; button.controlSize = .large
-        button.font = .systemFont(ofSize: 17, weight: .semibold)
-        button.contentTintColor = NSColor(calibratedRed: 0.94, green: 0.8, blue: 0.54, alpha: 1)
         button.target = self; button.action = #selector(play)
-        button.keyEquivalent = "\r"
-        updateButton.bezelStyle = .rounded; updateButton.target = self; updateButton.action = #selector(update)
-        let logs = NSButton(title: "Журнал", target: self, action: #selector(openLogs))
-        let info = NSButton(title: "О программе", target: self, action: #selector(about))
-        logs.bezelStyle = .inline; info.bezelStyle = .inline
-        let footer = NSTextField(labelWithString: "Без подписки и пробного периода")
-        footer.font = .systemFont(ofSize: 11); footer.textColor = .tertiaryLabelColor
-        for view in [title, subtitle, status, detail, progress, button, updateButton, logs, info, footer] {
-            view.translatesAutoresizingMaskIntoConstraints = false; content.addSubview(view)
-        }
-        NSLayoutConstraint.activate([
-            title.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 44), title.topAnchor.constraint(equalTo: content.topAnchor, constant: 32),
-            subtitle.leadingAnchor.constraint(equalTo: title.leadingAnchor), subtitle.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 2),
-            status.leadingAnchor.constraint(equalTo: title.leadingAnchor), status.topAnchor.constraint(equalTo: subtitle.bottomAnchor, constant: 38),
-            progress.leadingAnchor.constraint(equalTo: status.trailingAnchor, constant: 12), progress.centerYAnchor.constraint(equalTo: status.centerYAnchor),
-            detail.leadingAnchor.constraint(equalTo: title.leadingAnchor), detail.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -44), detail.topAnchor.constraint(equalTo: status.bottomAnchor, constant: 9),
-            button.leadingAnchor.constraint(equalTo: title.leadingAnchor), button.topAnchor.constraint(equalTo: detail.bottomAnchor, constant: 28), button.widthAnchor.constraint(equalToConstant: 210), button.heightAnchor.constraint(equalToConstant: 46),
-            updateButton.leadingAnchor.constraint(equalTo: button.trailingAnchor, constant: 24), updateButton.centerYAnchor.constraint(equalTo: button.centerYAnchor),
-            footer.leadingAnchor.constraint(equalTo: title.leadingAnchor), footer.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -28),
-            logs.trailingAnchor.constraint(equalTo: info.leadingAnchor, constant: -22), logs.centerYAnchor.constraint(equalTo: footer.centerYAnchor), info.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -38), info.centerYAnchor.constraint(equalTo: footer.centerYAnchor)
-        ])
+        updateButton.target = self; updateButton.action = #selector(update)
+        configureLauncherWindow(
+            window, status: status, detail: detail, progress: progress, play: button, update: updateButton,
+            logs: NSButton(title: "Журнал", target: self, action: #selector(openLogs)),
+            info: NSButton(title: "О программе", target: self, action: #selector(about)),
+            footerText: "Без подписки и пробного периода"
+        )
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in self?.refresh() }
         window.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)

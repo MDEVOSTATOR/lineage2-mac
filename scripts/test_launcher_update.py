@@ -32,7 +32,7 @@ let publicKey = key.publicKey.rawRepresentation
 func signed(asset: String, version: String, bytes: Data) throws -> Data {
     let payload = try JSONSerialization.data(withJSONObject: [
         "schema": 1, "releases": [
-            identifier: ["version": version, "asset": asset, "tag": "v1.4.3-preview.1",
+            identifier: ["version": version, "asset": asset, "tag": "v1.4.4-preview.1",
                          "size": bytes.count, "sha256": sha256Data(bytes)]
         ]
     ])
@@ -97,8 +97,8 @@ with tempfile.TemporaryDirectory(prefix="nng-launcher-tests-", dir=BUILD) as dir
         ROOT / "Sources/UpdateCheck.swift", "-o", tester)
 
     for name, current, version, asset in [
-        ("NNG Mac Easy.app", "1.4.2", "1.4.3", "NNG-Mac-Easy-launcher-arm64"),
-        ("NNG Mac Updated.app", "1.3.6", "1.3.7", "NNG-Mac-Installed-launcher-arm64"),
+        ("NNG Mac Easy.app", "1.4.3", "1.4.4", "NNG-Mac-Easy-launcher-arm64"),
+        ("NNG Mac Updated.app", "1.3.7", "1.3.8", "NNG-Mac-Installed-launcher-arm64"),
     ]:
         app = folder / name
         run("/bin/cp", "-cR", BUILD / name, app)

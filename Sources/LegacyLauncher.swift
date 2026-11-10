@@ -342,6 +342,7 @@ func runGameWorker(root: URL = launcherRoot(), prepareWithUpdater: Bool = false)
 func digest(_ url: URL) throws -> String {try cachedFileDigest(url,root:launcherRoot())}
 
 final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
+    private let launcherUpdates = LauncherUpdates(root: launcherRoot())
     private let root = launcherRoot()
     private var window: NSWindow!
     private let status = NSTextField(labelWithString: "Готов к запуску")
@@ -368,6 +369,10 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let item = NSMenuItem(); menu.addItem(item)
         let appMenu = NSMenu()
         appMenu.addItem(withTitle: "О программе NNG Mac", action: #selector(about), keyEquivalent: "")
+        launcherUpdates.addMenuItem(to: appMenu) { [weak self] in
+            guard let self else { return false }
+            return !self.preparing && self.worker?.isRunning != true && !self.otherLaunchActive()
+        }
         appMenu.addItem(withTitle: "Управление тачпадом…", action: #selector(trackpadSettings), keyEquivalent: "t")
         metalItem = appMenu.addItem(withTitle: "Графика: Metal + ускорение x87", action: #selector(useMetal), keyEquivalent: "")
         openGLItem = appMenu.addItem(withTitle: "Графика: OpenGL (WineD3D)", action: #selector(useOpenGL), keyEquivalent: "")
@@ -459,8 +464,15 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
             logTail += String(decoding: bytes, as: UTF8.self)
             if logTail.count > 32000 { logTail = String(logTail.suffix(24000)) }
         }
+        if launcherUpdates.installing {
+            button.isEnabled = false
+            updateButton.isEnabled = false
+            status.stringValue = "Устанавливаем обновление лаунчера…"
+            return
+        }
         if preparing { return }
         let busy = worker?.isRunning == true || otherLaunchActive()
+        if !busy { launcherUpdates.offerPendingUpdate() }
         updateButton.isEnabled = !busy
         if busy, let pid = gamePID() {
             if activeGameSession(root:root) == nil, trackpadStartedForPID != pid { startTrackpad(pid: pid, show: false) }
@@ -499,6 +511,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc private func play() {
+        guard !launcherUpdates.installing else { return }
         guard !preparing else { return }
         if worker?.isRunning == true || otherLaunchActive() {
             showGame(); return
@@ -522,6 +535,7 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     @objc private func update() {
+        guard !launcherUpdates.installing else { return }
         guard !preparing, worker?.isRunning != true, !otherLaunchActive() else { return }
         preparing = true; failed = false; button.isEnabled = false; updateButton.isEnabled = false
         status.stringValue = "Проверяем обновления…"; progress.startAnimation(nil)
@@ -673,6 +687,8 @@ final class Launcher: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if alert.runModal() == .alertSecondButtonReturn, let url = Bundle.main.url(forResource: "THIRD-PARTY", withExtension: "md") { NSWorkspace.shared.open(url) }
     }
 }
+
+handleLauncherUpdateArguments()
 
 if CommandLine.arguments.contains("--repair-xml") {
     let root=launcherRoot()

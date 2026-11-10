@@ -19,8 +19,8 @@ if not args.apply:
  subprocess.run(['/bin/cp','-cR',str(app),str(candidate)],check=True)
  source.parent.mkdir(parents=True,exist_ok=True);source.write_bytes((ROOT/'Sources/LegacyLauncher.swift').read_bytes())
  target=candidate/'Contents/MacOS/nng';target.unlink()
- subprocess.run(['xcrun','swiftc','-O','-target','arm64-apple-macos15.0','-file-prefix-map',str(ROOT)+'=.','-debug-prefix-map',str(ROOT)+'=.',str(source),str(ROOT/'Sources/UpdateCheck.swift'),str(ROOT/'Sources/XMLRuntime.swift'),'-o',str(target)],check=True)
- for name in ['LegacyLauncher.swift','UpdateCheck.swift','XMLRuntime.swift','MSXMLProbe.go']:
+ subprocess.run(['xcrun','swiftc','-O','-target','arm64-apple-macos15.0','-file-prefix-map',str(ROOT)+'=.','-debug-prefix-map',str(ROOT)+'=.',str(source),str(ROOT/'Sources/UpdateCheck.swift'),str(ROOT/'Sources/LauncherUpdate.swift'),str(ROOT/'Sources/XMLRuntime.swift'),'-o',str(target)],check=True)
+ for name in ['LegacyLauncher.swift','UpdateCheck.swift','LauncherUpdate.swift','XMLRuntime.swift','MSXMLProbe.go']:
   destination=candidate/'Contents/Resources/Sources'/('NNGLauncher.swift' if name.startswith('Legacy') else name);destination.write_bytes((ROOT/'Sources'/name).read_bytes())
  probe=args.xml_probe_exe or ROOT/'build/msxml_probe.exe'
  if not probe.exists():raise SystemExit('Build the Easy app XML probe first or pass --xml-probe-exe')
@@ -28,6 +28,7 @@ if not args.apply:
  shutil.copy2(probe,xml_folder/'msxml_probe.exe')
  xml=json.loads((ROOT/'resources/xml-runtime.json').read_text());xml['probeSHA256']=sha(probe)
  (candidate/'Contents/Resources/xml-runtime.json').write_text(json.dumps(xml,indent=2)+'\n')
+ shutil.copy2(ROOT/'resources/launcher-update-public-key.txt',candidate/'Contents/Resources/launcher-update-public-key.txt')
  info=candidate/'Contents/Info.plist';data=plistlib.loads(info.read_bytes());data.update(CFBundleShortVersionString='1.3.6',CFBundleVersion='1.3.6');info.write_bytes(plistlib.dumps(data))
  subprocess.run(['codesign','--force','--sign','-','--identifier',data['CFBundleIdentifier'],str(candidate)],check=True)
 else:

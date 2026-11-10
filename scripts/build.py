@@ -5,6 +5,7 @@ import argparse,hashlib,json,os,plistlib,shutil,subprocess,sys,urllib.request,zi
 ROOT=Path(__file__).resolve().parent.parent
 BUILD=ROOT/'build';CACHE=ROOT/'local/cache';DIST=ROOT/'dist'
 VERSION='1.3.4';TAG='v1.3.4-preview.1'
+EASY_VERSION='1.4.3';EASY_TAG='v1.4.3-preview.1'
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
 def run(args,**kw):return subprocess.run([str(x) for x in args],check=True,**kw)
 def fetch(url,path,want):
@@ -34,7 +35,7 @@ def main():
   run(['go','vet',ROOT/'Sources/WineInputBridge.go'],env=env)
   run(['go','build','-trimpath','-ldflags=-s -w','-o',bridge,ROOT/'Sources/WineInputBridge.go'],env=env)
  assert bridge.read_bytes()[:2]==b'MZ'
- tag='v1.4.2-preview.1' if args.easy else TAG
+ tag=EASY_TAG if args.easy else TAG
  app=BUILD/('NNG Mac Easy.app' if args.easy else 'NNG Mac Community.app')
  if app.exists():shutil.rmtree(app)
  res=app/'Contents/Resources';helper=app/'Contents/Helpers/NNG Trackpad.app';hres=helper/'Contents/Resources/input-bridge'
@@ -52,7 +53,7 @@ def main():
  if args.easy:
   config=json.loads((ROOT/'resources/easy-install.json').read_text())
   (res/'mac-binaries.json').write_text(json.dumps({x['name']:{'size':x['size'],'sha256':x['sha256']} for x in config['modules']},indent=2)+'\n')
-  for name in ('easy-install.json','settings-patches.json'):shutil.copy2(ROOT/'resources'/name,res/name)
+  for name in ('easy-install.json','settings-patches.json','launcher-update-public-key.txt'):shutil.copy2(ROOT/'resources'/name,res/name)
  else:(res/'mac-binaries.json').write_text('{}\n')
  if args.easy:
   xml_exe=BUILD/'msxml_probe.exe'
@@ -71,7 +72,7 @@ def main():
  shutil.copy2(ROOT/'resources/AppIcon.icns',res/'NNGMac.icns')
  for p in (ROOT/'licenses').iterdir():shutil.copy2(p,res/'Licenses'/p.name)
  for name in ('THIRD-PARTY.md','LICENSE','README.md'):shutil.copy2(ROOT/name,res/name)
- for name in ('main.swift','ClientImport.swift','EasyInstall.swift','UpdateCheck.swift','XMLRuntime.swift','MSXMLProbe.go','Trackpad.swift','WineInputBridge.go'):
+ for name in ('main.swift','ClientImport.swift','EasyInstall.swift','UpdateCheck.swift','LauncherUpdate.swift','XMLRuntime.swift','MSXMLProbe.go','Trackpad.swift','WineInputBridge.go'):
   d=res/'Sources';d.mkdir(exist_ok=True);shutil.copy2(ROOT/'Sources'/name,d/name)
  for name in ('patch_resize_renderer.py','mtld3d-0.15.1-lineage2.patch'):shutil.copy2(ROOT/'patches'/name,res/'Sources'/name)
  main=app/'Contents/MacOS/nng';native=helper/'Contents/MacOS/nng-trackpad'
@@ -80,16 +81,16 @@ def main():
   source=(ROOT/'Sources'/name).read_text()
   if args.easy:source=source.replace('ru.nng.macclient.community','ru.nng.macclient.easy').replace('ru.nng.community.trackpad.show','ru.nng.easy.trackpad.show').replace('Library/Application Support/NNG Mac Community','Library/Application Support/NNG Mac Easy')
   (source_dir/name).write_text(source)
- run(['xcrun','swiftc','-O','-target','arm64-apple-macos15.0','-file-prefix-map',str(ROOT)+'=.','-debug-prefix-map',str(ROOT)+'=.',source_dir/'main.swift',ROOT/'Sources/ClientImport.swift',ROOT/'Sources/EasyInstall.swift',ROOT/'Sources/UpdateCheck.swift',ROOT/'Sources/XMLRuntime.swift','-o',main])
+ run(['xcrun','swiftc','-O','-target','arm64-apple-macos15.0','-file-prefix-map',str(ROOT)+'=.','-debug-prefix-map',str(ROOT)+'=.',source_dir/'main.swift',ROOT/'Sources/ClientImport.swift',ROOT/'Sources/EasyInstall.swift',ROOT/'Sources/UpdateCheck.swift',ROOT/'Sources/LauncherUpdate.swift',ROOT/'Sources/XMLRuntime.swift','-o',main])
  run(['xcrun','swiftc','-O','-target','arm64-apple-macos15.0','-file-prefix-map',str(ROOT)+'=.','-debug-prefix-map',str(ROOT)+'=.',source_dir/'Trackpad.swift','-o',native])
  run([native,'--self-test'])
  shutil.copy2(bridge,hres/'nng-input.exe');(hres/'sha256').write_text(sha(bridge)+'\n')
  for bundle,identifier,exe,title in [(helper,'ru.nng.macclient.community.trackpad','nng-trackpad','Тачпад NNG Mac'),(app,'ru.nng.macclient.community','nng','NNG Mac Community')]:
   if args.easy:identifier=identifier.replace('.community','.easy');title='NNG Mac Easy' if bundle==app else title
-  info=dict(CFBundleIdentifier=identifier,CFBundleName=title,CFBundleDisplayName=title,CFBundleExecutable=exe,CFBundlePackageType='APPL',CFBundleShortVersionString='1.4.2' if args.easy else VERSION,CFBundleVersion='1',LSMinimumSystemVersion='15.0',NSHighResolutionCapable=True,LSMultipleInstancesProhibited=True)
+  info=dict(CFBundleIdentifier=identifier,CFBundleName=title,CFBundleDisplayName=title,CFBundleExecutable=exe,CFBundlePackageType='APPL',CFBundleShortVersionString=EASY_VERSION if args.easy else VERSION,CFBundleVersion=EASY_VERSION if args.easy and bundle==app else '1',LSMinimumSystemVersion='15.0',NSHighResolutionCapable=True,LSMultipleInstancesProhibited=True)
   if bundle==app:
    info['CFBundleIconFile']='NNGMac.icns'
-   if args.easy:info.update(NNGEasyInstaller=True,CFBundleShortVersionString='1.4.2')
+   if args.easy:info['NNGEasyInstaller']=True
   else:info['LSUIElement']=True
   (bundle/'Contents/Info.plist').write_bytes(plistlib.dumps(info))
   run(['codesign','--force','--sign','-','--identifier',identifier,bundle])
